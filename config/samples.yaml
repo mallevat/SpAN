@@ -1,0 +1,121 @@
+# SpAN Analysis Sample Configuration
+# ==================================
+#
+# Define your samples and file paths here.
+# All paths can be absolute or relative to the project root.
+
+# Analysis parameters
+parameters:
+  # ONTraC settings
+  ontrac:
+    epochs: 1000
+    k_neighbors: 50
+    hidden_feats: 4
+    batch_size: 5
+    seed: 42
+  
+  # Spatial gradient settings
+  spatial_gradient:
+    tumor_label: "Tumor"
+    lymphoid_label: "Lymphoid"
+    coord_key: "spatial"
+  
+  # SpAN settings
+  span:
+    nt_weight: 0.5  # Equal weighting
+
+# Cross-sample validation requirements
+validation:
+  min_samples_required: 4  # Minimum samples showing significant discrimination
+  alpha: 0.05  # Significance threshold
+
+# Sample definitions
+# ------------------
+# Each sample requires:
+#   - name: Sample identifier
+#   - h5ad: Path to AnnData h5ad file with spatial coordinates
+#   - card: Path to CARD deconvolution results (cell type proportions)
+#   - niches: Path to CellCompass/GWR niche labels
+
+samples:
+  - name: "MA-1"
+    h5ad: "data/Sample_11236-MA-1.h5ad"
+    card: "data/card_results/MA-1_proportions.csv"
+    niches: "data/niche_labels/MA-1_cellcompass.csv"
+    metadata:
+      site: "tongue"
+      type: "primary"
+      hpv_status: "negative"
+
+  - name: "MA-4"
+    h5ad: "data/Sample_11239-MA-4.h5ad"
+    card: "data/card_results/MA-4_proportions.csv"
+    niches: "data/niche_labels/MA-4_cellcompass.csv"
+    metadata:
+      site: "tonsil"
+      type: "primary"
+      hpv_status: "positive"
+
+  - name: "MA-7"
+    h5ad: "data/Sample_11242-MA-7.h5ad"
+    card: "data/card_results/MA-7_proportions.csv"
+    niches: "data/niche_labels/MA-7_cellcompass.csv"
+    metadata:
+      site: "oral_cavity"
+      type: "primary"
+      hpv_status: "negative"
+
+  - name: "MA-9"
+    h5ad: "data/Sample_11244-MA-9.h5ad"
+    card: "data/card_results/MA-9_proportions.csv"
+    niches: "data/niche_labels/MA-9_cellcompass.csv"
+    metadata:
+      site: "tongue"
+      type: "primary"
+      hpv_status: "negative"
+
+  - name: "MA-11"
+    h5ad: "data/Sample_11246-MA-11.h5ad"
+    card: "data/card_results/MA-11_proportions.csv"
+    niches: "data/niche_labels/MA-11_cellcompass.csv"
+    metadata:
+      site: "lymph_node"
+      type: "metastatic"
+      paired_with: "MA-9"
+      hpv_status: "negative"
+
+  - name: "MA-12"
+    h5ad: "data/Sample_11247-MA-12.h5ad"
+    card: "data/card_results/MA-12_proportions.csv"
+    niches: "data/niche_labels/MA-12_cellcompass.csv"
+    metadata:
+      site: "oral_cavity"
+      type: "primary"
+      hpv_status: "negative"
+
+# Optional: Define sample groups for comparative analysis
+groups:
+  primary:
+    - "MA-1"
+    - "MA-4"
+    - "MA-7"
+    - "MA-9"
+    - "MA-12"
+  
+  metastatic:
+    - "MA-11"
+  
+  hpv_positive:
+    - "MA-4"
+  
+  hpv_negative:
+    - "MA-1"
+    - "MA-7"
+    - "MA-9"
+    - "MA-11"
+    - "MA-12"
+
+  # Matched primary-metastatic pairs
+  matched_pairs:
+    - primary: "MA-9"
+      metastatic: "MA-11"
