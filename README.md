@@ -1,20 +1,26 @@
 # SpAN: Spatial-Anchored Niche Trajectory Analysis
 
-A computational framework for analyzing tumor microenvironment spatial organization using HD Visium data.
+A computational framework for placing Visium HD bins on a continuous tumor-to-lymphoid axis.
 
 ## Overview
 
 SpAN (Spatial-Anchored Niche trajectory) combines:
-1. **ONTraC** - Neural network-based niche trajectory scoring based on cell-type composition
-2. **Spatial Gradient** - Physical distance-based positioning relative to tissue compartments
-3. **SpAN Score** - Integrated molecular + spatial trajectory positioning
+1. **ONTraC** - graph neural network niche trajectory scoring from cell-type composition
+2. **Spatial Gradient** - physical distance-based positioning relative to tumor and lymphoid anchor bins
+3. **SpAN Score** - the average of the two, so each bin carries both its molecular and its physical position
 
-This framework was developed for analyzing Interface zones in head and neck squamous cell carcinoma (HNSCC), revealing that tumor-immune boundaries confer significant survival benefits (p=0.0008, validated in 488 TCGA patients).
+SpAN was developed for Visium HD sections of head and neck squamous cell carcinoma (HNSCC) and accompanies the manuscript listed under Citation, where it is used to resolve the tumor-immune interface.
 
 ## Citation
 
 If you use this code, please cite:
-> [Your paper citation here]
+> Allevato MM, Krishnan SN, et al. Convergent spatial analyses define a prognostic tumor-immune interface niche in head and neck cancer. Manuscript under review.
+
+## System requirements
+
+- Python 3.10 with the packages listed under Installation.
+- Developed and run on Linux on a SLURM cluster (see `slurm/submit_ontrac.sh`).
+- ONTraC training was run on one NVIDIA GPU (`--device cuda:0`); a CPU run is possible but slower.
 
 ## Installation
 
@@ -37,16 +43,20 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ### Clone repository
 ```bash
-git clone https://github.com/[your-username]/SpAN_analysis.git
-cd SpAN_analysis
+git clone https://github.com/mallevat/SpAN.git
+cd SpAN
 ```
+
+## Demo
+
+A Code Ocean capsule (DOI 10.24433/CO.5296569.v1, made public when the manuscript is published) runs SpAN and CLiP end to end on a representative Visium HD sample with one "Reproducible Run" click and reproduces the interface-versus-lymphoid separation reported in the manuscript. Reviewers receive access through the journal.
 
 ## Pipeline Overview
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   Visium HD     │     │  CARD Deconv +   │     │     ONTraC      │
-│   8μm Data      │────▶│  CellCompass     │────▶│   NT Scores     │
+│   8μm Data      │────▶│  NicheCompass    │────▶│   NT Scores     │
 └─────────────────┘     │  Niche Labels    │     └────────┬────────┘
                         └──────────────────┘              │
                                  │                        │
@@ -71,7 +81,6 @@ cd SpAN_analysis
 python scripts/01_prepare_ontrac_metadata.py \
     --h5ad data/sample.h5ad \
     --card_results data/card_deconv.csv \
-    --niche_labels data/cellcompass_niches.csv \
     --output ontrac_input/metadata.csv
 ```
 
@@ -88,7 +97,7 @@ python scripts/02_run_ontrac.py \
 ```bash
 python scripts/03_calculate_spatial_gradient.py \
     --h5ad data/sample.h5ad \
-    --niche_labels data/cellcompass_niches.csv \
+    --niche_labels data/niche_labels.csv \
     --output results/spatial_gradient.csv
 ```
 
@@ -97,7 +106,7 @@ python scripts/03_calculate_spatial_gradient.py \
 python scripts/04_compute_span_score.py \
     --nt_scores results/ontrac/NTScore.csv \
     --spatial_gradient results/spatial_gradient.csv \
-    --niche_labels data/cellcompass_niches.csv \
+    --niche_labels data/niche_labels.csv \
     --output results/span_scores.csv
 ```
 
@@ -108,14 +117,16 @@ python scripts/run_full_pipeline.py \
     --output_dir results/
 ```
 
+Niche labels are the per-bin NicheCompass niche assignments (tumor, interface, lymphoid, stromal) described in the manuscript Methods.
+
 ## File Structure
 
 ```
-SpAN_analysis/
+SpAN/
 ├── README.md
 ├── LICENSE
 ├── config/
-│   └── samples.yaml           # Sample configuration
+│   └── samples.yaml           # Sample configuration and parameters
 ├── scripts/
 │   ├── 01_prepare_ontrac_metadata.py
 │   ├── 02_run_ontrac.py
@@ -124,15 +135,11 @@ SpAN_analysis/
 │   ├── run_full_pipeline.py
 │   └── utils/
 │       ├── __init__.py
-│       ├── io_utils.py
 │       └── scoring_utils.py
 ├── analysis/
-│   ├── trajectory_analysis.py
-│   ├── gene_program_analysis.py
 │   └── visualization.py
 └── slurm/
-    ├── submit_ontrac.sh
-    └── submit_pipeline.sh
+    └── submit_ontrac.sh
 ```
 
 ## Methodology
@@ -147,7 +154,7 @@ Physical distance-based positioning using KD-tree nearest-neighbor search:
 spatial_gradient = dist_to_tumor / (dist_to_tumor + dist_to_lymphoid)
 ```
 
-Where distances are calculated to the nearest Tumor and Lymphoid anchor spots (defined by CellCompass niche labels).
+Where distances are calculated to the nearest Tumor and Lymphoid anchor spots (defined by the NicheCompass niche labels).
 
 ### SpAN Score
 Simple average of molecular and spatial components:
@@ -166,7 +173,7 @@ SpAN = (NT_oriented + spatial_gradient) / 2
 | Interface | 0.59     | 0.71             | 0.65       |
 | Lymphoid  | 0.61     | 1.00             | 0.80       |
 
-**Key finding**: NT score alone cannot distinguish Interface from Lymphoid (p=0.82), but SpAN provides clear separation (p=0.002).
+**Key finding**: NT score alone cannot distinguish Interface from Lymphoid (P = 0.82), whereas SpAN separates neighboring niches (Mann-Whitney U, P < 0.003).
 
 ## Parameters
 
@@ -182,7 +189,7 @@ SpAN = (NT_oriented + spatial_gradient) / 2
 ### Spatial Gradient
 | Parameter | Description |
 |-----------|-------------|
-| Anchor niches | Tumor, Lymphoid (from CellCompass) |
+| Anchor niches | Tumor, Lymphoid (from NicheCompass niche labels) |
 | Distance metric | Euclidean (8μm Visium HD) |
 | Normalization | d_tumor / (d_tumor + d_lymphoid) |
 
@@ -192,4 +199,4 @@ MIT License - see LICENSE file for details.
 
 ## Contact
 
-[Your contact information]
+Michael Allevato. Questions and bug reports: https://github.com/mallevat/SpAN/issues

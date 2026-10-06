@@ -35,7 +35,7 @@ validation:
 #   - name: Sample identifier
 #   - h5ad: Path to AnnData h5ad file with spatial coordinates
 #   - card: Path to CARD deconvolution results (cell type proportions)
-#   - niches: Path to CellCompass/GWR niche labels
+#   - niches: Path to per-bin NicheCompass niche labels (tumor, interface, lymphoid, stromal)
 
 samples:
   - name: "MA-1"
